@@ -1,43 +1,62 @@
 <template>
       <div class="col-md-6">
 
-            <form @submit.prevent="onSubmit" @keydown="errors.clear($event.target.name)">
+            <form @submit.prevent="onSubmit" @keydown="form.errors.clear($event.target.name)">
 
                 <div class="form-group">
                     
-                    <input type="text" class="form-control" placeholder="Enter Name" v-model="form.name"> <br><br>
+                    <input type="text" name="name" class="form-control" placeholder="Enter Name" v-model="form.name">
 
-                    <span v-if="form.errors.has('name')" v-test="form.errors.get('name')"></span>
+                    <small style="color:red;" v-if="form.errors.has('name')" v-text="form.errors.get('name')"></small>
 
                 </div>
 
                 <div class="form-group">
 
-                    <input type="email" class="form-control" placeholder="Enter Email" v-model="form.email"><br> <br>
+                    <input type="email" name="email" class="form-control" placeholder="Enter Email" v-model="form.email">
 
-                    <span v-if="form.errors.has('email')" v-test="form.errors.get('email')"></span>
+                    <small style="color:red;" v-if="form.errors.has('email')" v-text="form.errors.get('email')"></small>
+
+                </div>
+
+
+
+                <div class="form-group">
+
+                    <input type="tel" name="phone" class="form-control" placeholder="Enter phone" v-model="form.phone">
+
+                    <small style="color:red;" v-if="form.errors.has('phone')" v-text="form.errors.get('phone')"></small>
+
+                </div>
+
+                
+                <div class="form-group">
+
+                    <input type="text" name="location" class="form-control" placeholder="Enter location" v-model="form.location">
+
+                    <small style="color:red;" v-if="form.errors.has('location')" v-text="form.errors.get('location')"></small>
 
                 </div>
 
 
                 <div class="form-group">
 
-                    <input type="password" class="form-control" placeholder="Enter password" v-model="form.password"><br> <br>
+                    <input type="password" name="password" class="form-control" placeholder="Enter password" v-model="form.password">
 
-                    <span v-if="form.errors.has('password')" v-test="form.errors.get('password')"></span>
+                    <small style="color:red;" v-if="form.errors.has('password')" v-text="form.errors.get('password')"></small>
 
                 </div>
 
 
                 <div class="form-group">
 
-                    <input type="password" class="form-control" placeholder="Confirm password" v-model="form.password_confirmation"><br> <br>
+                    <input type="password" name="password_confirmation" class="form-control" placeholder="Confirm password" v-model="form.password_confirmation">
 
-                    <span v-if="form.errors.has('password_confirmation')" v-test="form.errors.get('password_confirmation')"></span>
+                    <small style="color:red;" v-if="form.confirm()" v-text="form.confirm()"></small>
 
                 </div>
 
-                <button type="submit" :disabled="false">submit</button>
+                <button type="submit" :disabled="form.errors.any()">submit</button>
             </form>
 
         </div>
@@ -54,6 +73,18 @@
             this.errors = {};
         }
 
+        
+        has(field){
+
+            return this.errors.hasOwnProperty(field);
+        }
+
+
+        any(){
+
+
+            return Object.keys(this.errors).length > 0;
+        }
 
 
         get(field){
@@ -76,24 +107,19 @@
         clear(field){
 
 
-           if (field) delete this.errors[field]; //field was given clear field else reset the whole errors
+            if (field) {
+               
+                delete this.errors[field];
 
+                return;
+            
+            }else{
 
-           this.errors = {};
+                this.errors = {};
+
+            }
         }
 
-
-        has(field){
-
-            return this.errors.hasOwnProperty(field);
-        }
-
-
-        any(){
-
-
-            return Object.keys(this.errors).length > 0;
-        }
 
     }
 
@@ -118,11 +144,32 @@
 
 
 
+        confirm(){
+
+            
+            if(this.originalData.password_confirmation == ''){
+
+
+               return 'The confirm password field is required';
+
+
+            }else if(this.originalData.password != this.originalData.password_confirmation){
+
+
+                return 'Password missmatch';
+                
+            }
+
+
+        }
+
+
+
         reset(){
 
 
 
-            for (let field in originalData){
+            for (let field in this.originalData){
 
                 this[field] = '';
             }
@@ -138,9 +185,9 @@
 
            delete data.originalData;
             
-
            delete data.errors;
 
+           data['account_type'] = 'personal';
 
            return data
 
@@ -155,6 +202,12 @@
             console.log(response.data);
 
 
+            this.errors.clear();
+
+
+            this.reset();
+
+
         }
 
 
@@ -162,7 +215,7 @@
         onFail(error){
 
 
-            error => this.errors.record(error.response.data);
+            this.errors.record(error.response.data.errors);
 
         }
 
@@ -170,11 +223,19 @@
         submit(requestType, url){
 
 
-            axios[requestType](url, this.data())
+            axios[requestType.toLowerCase()](url, this.data(), {
 
-                .then(this.onSuccess.bind(this))
+                headers:{
 
-                .catch(this.onFail.bind(this)); 
+                    'Accept': 'application/json',
+
+                    'Content-Type': 'application/json',
+                }
+            })
+
+            .then(this.onSuccess.bind(this))
+
+            .catch(this.onFail.bind(this)); 
 
         }
     }
@@ -192,10 +253,13 @@ export default {
 
                 email : '',
 
+                location : '',
+
+                phone : '',
+
                 password : '',
 
                 password_confirmation : '',
-
 
             }),
 
@@ -205,7 +269,7 @@ export default {
 
     methods : {
 
-        onSubmit:() => {
+        onSubmit: function(){
 
             this.form.submit('POST', 'https://wipap.herokuapp.com/api/register');
 
